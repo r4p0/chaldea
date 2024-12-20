@@ -234,6 +234,18 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
         },
       ),
       PopupMenuItem(
+        child: Text('Copy to FGA'),
+        onTap: () {
+          final fgaSteps = this
+              .runtime
+              .getShareData(allowNotWin: true)
+              .toFGASteps();
+          copyToClipboard(fgaSteps).whenComplete(() {
+            EasyLoading.showSuccess(fgaSteps);
+          });
+        },
+      ),
+      PopupMenuItem(
         enabled: false,
         height: 16,
         padding: EdgeInsets.zero,

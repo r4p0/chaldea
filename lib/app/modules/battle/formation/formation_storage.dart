@@ -296,6 +296,14 @@ class _FormationEditorState extends State<FormationEditor>
         icon: const Icon(Icons.ios_share),
         tooltip: S.current.share,
       ),
+      TextButton(
+        onPressed: () async {
+          final fgaSteps = team.toFGASteps();
+          await copyToClipboard(fgaSteps);
+          EasyLoading.showSuccess(fgaSteps);
+        },
+        child: Text('FGA'),
+      ),
     ];
 
     return Wrap(

@@ -218,6 +218,124 @@ class BattleShareData {
     return 'G$data';
   }
 
+  String toFGASteps() {
+    final skillOperators = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+    final mysticOperators = ['j', 'k', 'l'];
+    final stepCode = StringBuffer();
+    final onFieldSvts = List<SvtSaveData?>.from(formation.onFieldSvts);
+    final backupSvts = List<SvtSaveData?>.from(formation.backupSvts);
+    int replaceIndex = 0;
+
+    final enabledMC = formation.mysticCode.mysticCodeId != null && formation.mysticCode.level > 0;
+    final mc = enabledMC ? db.gameData.mysticCodes[formation.mysticCode.mysticCodeId] : null;
+
+    for (final action in actions) {
+      int? targetSvt;
+      int? targetEnemy;
+      switch (action.type) {
+        case BattleRecordDataType.skill:
+          final skillIndex = action.skill;
+          if (skillIndex == null) break;
+
+          final svtIndex = action.svt;
+          // use mystic
+          if (svtIndex == null) {
+            final mcFunctions = mc?.skills.getOrNull(skillIndex)?.functions;
+            if (mcFunctions == null) break;
+            for (final function in mcFunctions) {
+              switch (function.funcType) {
+                case FuncType.replaceMember:
+                  final replaceMember = this.delegate?.replaceMemberIndexes.getOrNull(replaceIndex++);
+                  final onFieldIndex = replaceMember?.getOrNull(0);
+                  final backupIndex = replaceMember?.getOrNull(1);
+                  if(onFieldIndex != null && backupIndex != null) {
+                    final backupSvt = backupSvts.getOrNull(backupIndex);
+                    backupSvts[backupIndex] = onFieldSvts[onFieldIndex];
+                    onFieldSvts[onFieldIndex] = backupSvt;
+                    stepCode.write("x${onFieldIndex + 1}${backupIndex + 1}");
+                  }
+                  break;
+                default:
+                  break;
+              }
+              switch (function.funcTargetType) {
+                case FuncTargetType.ptOne:
+                case FuncTargetType.ptOneOther:
+                  targetSvt = action.options.playerTarget;
+                  break;
+                case FuncTargetType.enemy:
+                case FuncTargetType.enemyOther:
+                  targetEnemy = action.options.enemyTarget;
+                  break;
+                default:
+                  break;
+              }
+            }
+            
+            if (targetEnemy != null) {
+              stepCode.write("t${targetEnemy + 1}");
+            }
+            stepCode.write(mysticOperators[skillIndex]);
+            if (targetSvt != null) {
+              stepCode.write(targetSvt + 1);
+            }
+
+            break;
+          }
+
+          final skillId = onFieldSvts.getOrNull(svtIndex)?.skillIds.getOrNull(skillIndex);
+          if (skillId == null) break;
+          final skill = db.gameData.baseSkills[skillId];
+
+          if (skill == null) break;
+          for (final func in skill.functions) {
+            switch (func.funcTargetType) {
+              case FuncTargetType.ptOne:
+              case FuncTargetType.ptOneOther:
+                targetSvt = action.options.playerTarget;
+                break;
+              case FuncTargetType.enemy:
+              case FuncTargetType.enemyOther:
+                targetEnemy = action.options.enemyTarget;
+                break;
+              default:
+                break;
+            }
+          }
+
+          if (targetEnemy != null) {
+            stepCode.write("t${targetEnemy + 1}");
+          }
+          stepCode.write(skillOperators[svtIndex * 3 + skillIndex]);
+          if (targetSvt != null) {
+            stepCode.write(targetSvt + 1);
+          }
+          break;
+        case BattleRecordDataType.attack:
+          var attacks = action.attacks;
+          if (attacks == null) break;
+          int orderCardCount = 0;
+          for (final attack in attacks) {
+            if (attack.isTD) {
+              if (orderCardCount > 0) {
+                stepCode.write("n$orderCardCount");
+              }
+              stepCode.write(attack.svt + 1 + 3);
+            } else {
+              orderCardCount++;
+            }
+          }
+          stepCode.write(',#,');
+          break;
+        default:
+          break;
+      }
+    }
+
+    print(stepCode);
+    return stepCode.toString();
+  }
+
   // keep 4 bytes for format in the future
   static BattleShareData? parseUri(Uri uri) {
     final content = uri.queryParameters['data'];

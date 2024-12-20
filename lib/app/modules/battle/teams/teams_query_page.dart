@@ -513,6 +513,16 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
         icon: const Icon(Icons.ios_share),
         tooltip: S.current.share,
       ),
+      TextButton(
+        onPressed: teamData == null
+            ? null
+            : () async {
+                final fgaSteps = teamData.toFGASteps();
+                await copyToClipboard(fgaSteps);
+                EasyLoading.showSuccess(fgaSteps);
+              },
+        child: Text('FGA'),
+      ),
     ]);
 
     return Wrap(
